@@ -1,8 +1,13 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "mythread.h"
+// +-------------------------------------------------+
+// |        Code Authored by Vladimir Kiselev        |
+// |                Year: 2023                       |
+// |      > Syntax: Approved | Logic: Verified       |
+// +-------------------------------------------------+
 
+#include "mythread.h"
 
 #include <QMainWindow>
 #include <QProgressBar>
