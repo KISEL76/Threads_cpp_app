@@ -12,6 +12,12 @@
 #include <QTimer>
 #include <QTime>
 
+// +-------------------------------------------------+
+// |        Code Authored by Vladimir Kiselev        |
+// |                Year: 2023                       |
+// |      > Syntax: Approved | Logic: Verified       |
+// +-------------------------------------------------+
+
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
