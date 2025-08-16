@@ -11,28 +11,25 @@ class MyThread : public QThread
 public:
     explicit MyThread(QObject *parent = nullptr);
 
-    int Count;
+    int Count; //cчет до
 
-    void pause();
+    bool running = true; //состояние потока
 
-    void resume();
+    int potoks = 0; //количество потоков
 
-    bool paused;
+    int percents = 0; //проценты, на которых мы остановились
 
-    bool is_connected;
+    int schet = 0; //счётчик процентов
 
-    bool forced_delete;
 
 signals:
     void progress(int value);
 
+    void potoki();
+
 
 protected:
-    void run() override;
-
-private:
-    QMutex mutex;
-    QWaitCondition condition;
+    void run() override; // перегрузка метода по наследованию
 };
 
 #endif // MYTHREAD_H

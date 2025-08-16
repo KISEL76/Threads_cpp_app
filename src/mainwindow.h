@@ -1,19 +1,16 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-// +-------------------------------------------------+
-// |        Code Authored by Vladimir Kiselev        |
-// |                Year: 2023                       |
-// |      > Syntax: Approved | Logic: Verified       |
-// +-------------------------------------------------+
-
 #include "mythread.h"
 
+
 #include <QMainWindow>
-#include <QProgressBar>
-#include <QMessageBox>
 #include <QList>
-#include <ctime>
+#include <QProgressBar>
+#include <QLabel>
+#include <QWaitCondition>
+#include <QTimer>
+#include <QTime>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -31,29 +28,32 @@ private slots:
 
     void on_add_threadButton_clicked();
 
-    void on_pushButton_stopThread_clicked();
+    void on_delete_threadButton_clicked();
 
-    void on_pushButton_launch_clicked();
+    void on_start_threadpushButton_clicked();
 
-    void on_pushButton_remove_clicked();
+    void on_stop_threadpushButton_clicked();
 
-    void thread_finished();
-
-    void random_ch(char *letter);
-
-    void on_pushButton_resume_clicked();
-
-    void clear_mem();
-
-    void on_pushButton_forcedRemove_clicked();
-
-    void on_tableWidget_itemSelectionChanged();
+    void ticked();
 
 private:
     Ui::MainWindow *ui;
     MyThread *thread_1;
+    int row_count = 0;//количество строк
+    int row = 0;//значение строки
+    int i = -1;//элемент списка threads
+    int running_threads = 0;//счётчик количества работающих потоков
+
+
+
     QList<MyThread*> threads;
-    int threads_count;
-    int launched_threads;
+    QList<QProgressBar*> bars;
+
+
+private slots:
+
+    void setpot();
+
+    void on_tableWidget_currentCellChanged(int currentRow);
 };
 #endif // MAINWINDOW_H

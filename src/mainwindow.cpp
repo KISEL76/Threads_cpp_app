@@ -1,205 +1,152 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QDebug>
+#include <QThread>
+#include <QProgressBar>
+#include <QWaitCondition>
+#include <QString>
+#include "QTimer"
+#include "QTime"
+#include <QMessageBox>
+#include <QDebug>
+
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    setWindowTitle("Threads");
+    QTimer *timer;
+    timer = new QTimer(this);
+    timer->setInterval(10);
 
-    threads_count = 0, launched_threads = 0;
+    ui->tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+    ui->tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
 
-    ui->pushButton_forcedRemove->setVisible(false);
+    connect(timer, SIGNAL(timeout()),this,SLOT(ticked()));
+    connect(ui->tableWidget, &QTableWidget::currentCellChanged, this, &MainWindow::on_tableWidget_currentCellChanged);
+    timer->start(10);
 }
-
 MainWindow::~MainWindow()
 {
-    clear_mem();
     delete ui;
 }
 
 void MainWindow::on_add_threadButton_clicked()
 {
-    ui->tableWidget->setRowCount(threads_count+1);
+    row_count++;
+    ui->tableWidget->setRowCount(row_count);
 
     int count = ui->spinBox->value();
 
+    //создаём объект потока
     MyThread *thread = new MyThread;
     threads.append(thread);
-    thread->Count = count;
+    thread->Count = ui->spinBox->value();
+    i++;
 
-    char *letter = new char [16];
-    random_ch(letter);
-    QTableWidgetItem *item = new QTableWidgetItem("Поток " + QString::fromUtf8(letter));
-    ui->tableWidget->setItem(threads_count,0, item);
-    delete [] letter;
-    letter = nullptr;
+
+    //добавляем строку в таблицу
+    QTableWidgetItem *item = new QTableWidgetItem("Поток");
+    ui->tableWidget->setItem(row,0, item);
 
     QProgressBar *bar = new QProgressBar(this);
-    bar->setMaximum(thread->Count);
-    ui->tableWidget->setCellWidget(threads_count,1,bar);
+    bar->setMaximum(count);
 
-    QTableWidgetItem *new_item = new QTableWidgetItem(QString::number(count));
-    ui->tableWidget->setItem(threads_count, 2, new_item);
+    ui->tableWidget->setCellWidget(row,1,bar);
+    row++;
 
-    connect(thread, SIGNAL(progress(int)), bar, SLOT(setValue(int)));
-    threads_count++;
+    //коннект потока
+    connect(threads.back(), SIGNAL(progress(int)), bar, SLOT(setValue(int))); // полоска загрузки
+    connect(threads.back(), SIGNAL(potoki()), this, SLOT(setpot()));
+
 }
 
-void MainWindow::on_pushButton_stopThread_clicked()
+void MainWindow::on_delete_threadButton_clicked()
 {
-    int current_thread = ui->tableWidget->currentRow();
+    int selectedRow = ui->tableWidget->currentRow();
+    if (selectedRow >= 0 && selectedRow < threads.size())
+    {
+        row_count--;
+        row--;
+        ui->tableWidget->removeRow(selectedRow);
 
-    if (current_thread >= 0 && current_thread < ui->tableWidget->rowCount()){
-        MyThread *thread = threads.at(current_thread);
-        if(thread->isRunning()){
-            thread->pause();
-            launched_threads--;
-            ui->label_num->setText("Количество работающих потоков: " + QString::number(launched_threads));
-        }
-        else
-            QMessageBox::information(this, "Внимание!", "Этот поток уже не активен");
-    }
-    else{
-        QMessageBox::information(this, "Внимание!", "Поток не выбран");
-    }
-}
-
-void MainWindow::on_pushButton_launch_clicked()
-{
-    int current_thread = ui->tableWidget->currentRow();
-
-    if (current_thread >= 0 && current_thread <= ui->tableWidget->rowCount()){
-        MyThread *thread = threads.at(current_thread);
-        if(!thread->isRunning())
+        threads[selectedRow]->running = false;
+        if (!threads[selectedRow]->wait(500))
         {
-            thread->start();
-            launched_threads++;
-            ui->label_num->setText("Количество работающих потоков: " + QString::number(launched_threads));
-            if (thread->is_connected == false){
-                connect(thread,SIGNAL(finished()), this, SLOT(thread_finished()));
-                thread->is_connected = true;
-            }
+            threads[selectedRow]->terminate();
         }
-        else{
-            QMessageBox::information(this, "Внимание!", "Нельзя запустить новый поток, если он уже работает!");
-        }
+
+        delete threads[selectedRow];
+        threads.removeAt(selectedRow);
+
+        // обновим переменную i
+        if (threads.size() > 0)
+            i = qMin(selectedRow, threads.size() - 1);
+        else
+            i = -1;
     }
-    else{
-        QMessageBox::information(this, "Внимание!", "Поток не выбран");
+    else
+    {
+        QMessageBox::information(this, "Внимание!", "Поток не найден!");
     }
 }
 
-void MainWindow::on_pushButton_remove_clicked()
+
+void MainWindow::on_start_threadpushButton_clicked()
 {
-    int current_thread = ui->tableWidget->currentRow();
-    if (current_thread >= 0 && current_thread <= ui->tableWidget->rowCount()){
-        MyThread *thread = threads.at(current_thread);
-        if ((thread->paused == true || thread->isRunning()) && (!thread->isFinished()))
-            QMessageBox::information(this, "Внимание!", "Нельзя удалять работающие потоки!");
-        else if (threads_count == 1){
-            ui->tableWidget->removeRow(current_thread);
-            threads.removeAt(0);
-            threads_count--;
-            delete thread;
-            ui->pushButton_forcedRemove->setVisible(false);
+    if (i >= 0)
+    {
+        if(!threads[i]->isRunning()) //поток нельзя запустить еще раз, пока он не закончится
+        {
+            running_threads++;
+            threads[i]->running = true;
+            threads[i]->start();
         }
-        else{
-            threads.removeAt(current_thread);
-            ui->tableWidget->removeRow(current_thread);
-            threads_count--;
-            delete thread;
+        if(threads[i]->percents != 0)
+        {
+            threads[i]->schet = threads[i]->percents;
         }
     }
     else
-        QMessageBox::information(this, "Внимание!", "Поток не выбран!");
-}
-
-void MainWindow::thread_finished()
-{
-    launched_threads--;
-    ui->pushButton_forcedRemove->setVisible(false);
-    ui->label_num->setText("Количество работающих потоков: " + QString::number(launched_threads));
-}
-
-void MainWindow::random_ch(char *letter)
-{
-    srand(static_cast<unsigned int>(time(nullptr)));
-
-    int randomIndex = rand() % 26;
-    char randomLetter = 'A' + randomIndex;
-    *letter =  randomLetter;
-}
-
-void MainWindow::on_pushButton_resume_clicked()
-{
-    int current_thread = ui->tableWidget->currentRow();
-    if (current_thread >= 0 && current_thread <= ui->tableWidget->rowCount()){
-        MyThread *thread = threads.at(current_thread);
-        if (thread->paused == true){
-            thread->resume();
-            launched_threads++;
-            ui->label_num->setText("Количество работающих потоков: " + QString::number(launched_threads));
-        }
-        else{
-            QMessageBox::information(this, "Внимание!", "Возобновлять нечего!");
-        }
-    }
-    else{
-        QMessageBox::information(this, "Внимание!", "Поток нельзя возобновить, осоебнно если он не существует!");
+    {
+        QMessageBox::information(this, "Внимание!", "Поток не найден!");
+        return;
     }
 }
 
-void MainWindow::clear_mem()
+
+void MainWindow::on_stop_threadpushButton_clicked()
 {
-    for (int i = 0; i < ui->tableWidget->rowCount(); i++){
-        for (int j = 0; j < 2; j++){
-            delete ui->tableWidget->item(i,j);
-        }
+    if (i>=0)
+    {
+        threads[i]->running=false;
+        threads[i]->wait(500);
+    }
+    else
+    {
+        QMessageBox::information(this, "Внимание!", "Поток не найден!");
     }
 }
 
-void MainWindow::on_pushButton_forcedRemove_clicked()
+void MainWindow::setpot()
 {
-    int current_thread = ui->tableWidget->currentRow();
-    MyThread *thread = threads.at(current_thread);
-    if (current_thread >= 0 && current_thread <= ui->tableWidget->rowCount()){
-        if (threads_count == 1){
-            thread->forced_delete = true;
-            ui->tableWidget->removeRow(current_thread);
-            threads.removeAt(0);
-            threads_count--;
-            QThread::msleep(1500);
-            delete thread;
-            ui->pushButton_forcedRemove->setVisible(false);
-        }
-        else{
-            thread->forced_delete = true;
-            ui->tableWidget->removeRow(current_thread);
-            threads.removeAt(current_thread);
-            threads_count--;
-            QThread::msleep(1500);
-            delete thread;
-            ui->pushButton_forcedRemove->setVisible(false);
-        }
-    }
-    else{
-        QMessageBox::information(this, "Внимание!", "Поток не выбран!");
-        ui->pushButton_forcedRemove->setVisible(false);
-    }
+    running_threads--;
 }
 
-void MainWindow::on_tableWidget_itemSelectionChanged()
+void MainWindow::ticked() //Событие на каждый тик
 {
-    int current_thread = ui->tableWidget->currentRow();
-    MyThread *thread = threads.at(current_thread);
-    if (thread->isRunning() && thread->paused == false){
-        ui->pushButton_forcedRemove->setVisible(true);
-    }
-    else{
-        ui->pushButton_forcedRemove->setVisible(false);
+    QString str = QString::number(running_threads);
+    ui->pot->setText(str);
+}
+
+
+void MainWindow::on_tableWidget_currentCellChanged(int currentRow)
+{
+    if (currentRow >= 0 && currentRow < threads.size()) {
+        i = currentRow;
+    } else {
+        i = 0;
     }
 }
 

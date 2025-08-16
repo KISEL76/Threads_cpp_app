@@ -3,39 +3,22 @@
 
 MyThread::MyThread(QObject *parent) : QThread(parent)
 {
-    is_connected = false;
-    paused = false;
-    forced_delete = false;
+
 }
 
-void MyThread::pause()
-{
-    paused = true;
-}
-
-void MyThread::resume()
-{
-    paused = false;
-    mutex.lock();
-    condition.wakeOne();
-    mutex.unlock();
-}
 
 void MyThread::run()
 {
-    for (int i = 0; i < Count; i++)
+    //имитация долгой работы
+    for (int i = schet; i <= Count; i++)
     {
-        if (paused)
+        emit progress(i);
+        QThread::msleep(100);
+        if (running==false)
         {
-            mutex.lock();
-            condition.wait(&mutex);
-            mutex.unlock();
-        }
-        if (forced_delete)
-        {
+            percents = i;
             break;
         }
-        emit progress(i);
-        QThread::msleep(500);
     }
+    emit potoki();
 }
